@@ -6,6 +6,7 @@
 # Paramètres  : UTF-8, persistance fichiers
 # =================================================================================
 
+#Internet
 chcp 65001 > $null #on change la page de code pour UTF-8. chcp veut dire "change code page" et 65001 est le code pour UTF-8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 #on configure l'encodage de la console pour qu'il utilise UTF-8
 
