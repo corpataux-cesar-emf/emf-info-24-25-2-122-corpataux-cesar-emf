@@ -11,7 +11,7 @@ chcp 65001 > $null #on change la page de code pour UTF-8. chcp veut dire "change
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 #on configure l'encodage de la console pour qu'il utilise UTF-8
 
 # === Dossier de stockage ===
-$basePath = $PSScriptRoot  # Emplacement des fichiers de données
+$basePath = Join-Path -Path $PSScriptRoot -ChildPath "scriptFiles"  # Emplacement des fichiers de données
 if (-not (Test-Path $basePath)) {   # Si le dossier scriptFiles n'existe pas
     New-Item -Path $basePath -ItemType Directory | Out-Null  # On le crée
 }
