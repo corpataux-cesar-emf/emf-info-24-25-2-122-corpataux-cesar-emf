@@ -1,7 +1,7 @@
 ﻿# =================================================================================
 # Auteur      : Corpataux César
 # Date        : 2025-06-05
-# Version     : 5.7
+# Version     : 5.8
 # Description : Gestion des tireurs, concours, résultats, logs, accès 100% FTP, interface console complète
 # Paramètres  : UTF-8, fichiers CSV distants, logs info/erreur, FTP
 # =================================================================================
@@ -9,14 +9,23 @@
 chcp 65001 > $null
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$ftpBaseUrl = "ftp://cesarcorpataux.emf-informatique.ch/www"
-$ftpUsername = "cesarcorpataux"
-$ftpPasswordSec = Get-Content "ftp_password.txt" | ConvertTo-SecureString
-$ftpCredential = New-Object System.Management.Automation.PSCredential($ftpUsername, $ftpPasswordSec)
+# récupération des paramètres FTP depuis un fichier texte pour éviter de les stocker en clair dans le script
+$ftpParams = Get-Content "UserPassword_FTP.txt"
+# atribution des paramètres FTP
+$ftpBaseUrl = $ftpParams[0]
+$ftpUsername = $ftpParams[1]
+$ftpPassword = $ftpParams[2] | ConvertTo-SecureString -AsPlainText -Force
+# création de l'objet PSCredential pour l'authentification FTP
+# PSCredential permet de stocker les informations d'identification de manière sécurisée
+$ftpCredential = New-Object System.Management.Automation.PSCredential($ftpUsername, $ftpPassword)
 
+# création du répertoire temporaire local pour stocker les fichiers CSV et logs
 $localTempPath = "$env:TEMP\ftp_tireurs"
 if (-not (Test-Path $localTempPath)) { New-Item -Path $localTempPath -ItemType Directory | Out-Null }
+# -ItemType Directory crée un dossier s'il n'existe pas
+# Out-Null supprime la sortie de la commande pour éviter d'encombrer la console
 
+# définition des chemins des fichiers CSV et logs
 $tireursFile = Join-Path $localTempPath "tireurs.csv"
 $concoursFile = Join-Path $localTempPath "concours.csv"
 $recompensesFile = Join-Path $localTempPath "recompenses.csv"
@@ -25,14 +34,19 @@ $logInfoFile = Join-Path $localTempPath "log_info.txt"
 $logErrorFile = Join-Path $localTempPath "log_error.txt"
 
 
+# fonction pour écrire dans les logs
 function Write-Log {
     param([string]$type, [string]$msg)
+    # les paramètres $type est le type de log (INFO ou ERROR) et $msg le message à enregistrer
+
     $entry = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - $type - $msg"
     $logPath = if ($type -eq 'ERROR') { Join-Path $localTempPath "log_error.txt" } else { Join-Path $localTempPath "log_info.txt" }
     Add-Content $logPath $entry
+    # Renvoie le fichier log sur le serveur FTP
     Send-File -localPath $logPath -remoteName ([IO.Path]::GetFileName($logPath))
 }
-
+# fonction pour envoyer un fichier local vers le serveur FTP
+# pas de moi
 function Send-File {
     param([string]$localPath, [string]$remoteName)
     $url = [uri]::EscapeUriString("$ftpBaseUrl/$remoteName")
@@ -45,7 +59,8 @@ function Send-File {
     }
 }
 
-
+# fonction pour recevoir un fichier CSV depuis le serveur FTP
+# pas de moi
 function Receive-CsvFile {
     param([string]$fileName)
     $local = Join-Path $localTempPath $fileName
@@ -62,6 +77,9 @@ function Receive-CsvFile {
     }
 }
 
+
+# fonction pour confirmer l'existence d'un fichier CSV local et y ajouter un header si nécessaire
+# pas de moi
 function Confirm-CsvFile {
     param([string]$fileName, [string]$header)
     $local = Join-Path $localTempPath $fileName
@@ -72,6 +90,8 @@ function Confirm-CsvFile {
     }
 }
 
+# fonction pour recevoir tous les fichiers CSV et logs depuis le serveur FTP
+# pas de moi
 function Get-All {
     Receive-CsvFile "tireurs.csv"
     Receive-CsvFile "concours.csv"
@@ -90,12 +110,15 @@ function Get-All {
 }
 
 
+# fonction pour sauvegarder un fichier local vers le serveur FTP
+# pas de moi
 function Save-File {
     param([string]$filePath)
     $fileName = [IO.Path]::GetFileName($filePath)
     Send-File -localPath $filePath -remoteName $fileName
 }
 
+# fonction pour ajouter un tireur
 function Add-Tireur {
     $csv = Import-Csv $tireursFile
     do {
@@ -106,11 +129,14 @@ function Add-Tireur {
             Write-Host "Déjà existant." -ForegroundColor Yellow
             Write-Log ERROR "Tireur $numero déjà existant."
             $retry = Read-Host "Essayer un autre numéro ? (oui/non)"
-            #sinon on demande le reste des infos
+            # demande si on veut réessayer avec un autre numéro
+            # si oui, on recommence la boucle
+            # si non, on sort de la boucle
         }
         else {
             $retry = "non"
             $tireur = [PSCustomObject]@{
+                # PSCustomObject permet de créer un objet personnalisé avec des propriétés
                 NumeroFusil     = $numero
                 Nom             = Read-Host "Nom"
                 Prenom          = Read-Host "Prénom"
@@ -123,8 +149,11 @@ function Add-Tireur {
                 Ville           = Read-Host "Ville"
                 DateInscription = Get-Date -Format 'yyyy-MM-dd'
             }
-            #in rajoute ce tireur au CSV des tireurs
+            # on rajoute ce tireur au CSV des tireurs
+            # += ajoute un nouvel objet à parmis les autres
             $csv += $tireur
+            # -NoTypeInformation permet de ne pas inclure les informations de type dans le fichier CSV
+            # les informations de type sont les noms des propriétés de l'objet
             $csv | Export-Csv -NoTypeInformation -Encoding UTF8 $tireursFile
             Save-File $tireursFile
             Write-Log INFO "Tireur $($tireur.Prenom) $($tireur.Nom) ajouté."
@@ -132,9 +161,12 @@ function Add-Tireur {
     } while ($retry -eq "oui")
 }
 
+# fonction pour ajouter un concours et ses récompenses associées
+# fonction simple donc pas beaucoup de commentaires
 function Add-Concours {
     $csv = Import-Csv $concoursFile
     $nom = Read-Host "Nom du concours"
+    # vérifie si le concours existe déjà en comparant le nom avec les noms existants dans le CSV
     if ($csv.NomConcours -contains $nom) {
         Write-Host "Concours existant." -ForegroundColor Yellow
         Write-Log ERROR "Concours '$nom' existe déjà."
@@ -166,8 +198,10 @@ function Add-Concours {
     Write-Log INFO "Récompenses ajoutées pour '$nom'."
 }
 
+# fonction pour ajouter un résultat de concours pour un tireur
 function Add-Résultat {
     $concours = Import-Csv $concoursFile
+    # vérifie si des concours existent
     if ($concours.Count -eq 0) {
         Write-Host "Aucun concours." -ForegroundColor Red
         Write-Log ERROR "Ajout résultat impossible : aucun concours."
@@ -178,6 +212,7 @@ function Add-Résultat {
     $concours | ForEach-Object { Write-Host "- $($_.NomConcours)" }
 
     $tireurs = Import-Csv $tireursFile
+    # vérifie si des tireurs existent
     if ($tireurs.Count -eq 0) {
         Write-Host "Aucun tireur disponible." -ForegroundColor Red
         Write-Log ERROR "Ajout résultat impossible : aucun tireur."
@@ -188,6 +223,8 @@ function Add-Résultat {
     $tireurs | ForEach-Object { Write-Host "- $($_.NumeroFusil) : $($_.Prenom) $($_.Nom)" }
 
     $nom = Read-Host "Nom du concours"
+    # vérifie si le concours existe en comparant le nom avec les noms existants dans le CSV
+    # -not permet de vérifier si le nom n'est pas dans la liste des concours
     if (-not ($concours.NomConcours -contains $nom)) {
         Write-Host "Introuvable." -ForegroundColor Red
         Write-Log ERROR "Concours '$nom' introuvable."
@@ -196,6 +233,8 @@ function Add-Résultat {
     }
 
     $numero = Read-Host "Numéro de fusil"
+    # vérifie si le numéro de fusil existe en comparant le numéro avec les numéros existants dans le CSV
+    # -not permet de vérifier si le numéro n'est pas dans la liste des tireurs
     if (-not ($tireurs.NumeroFusil -contains $numero)) {
         Write-Host "Tireur introuvable." -ForegroundColor Red
         Write-Log ERROR "Numéro fusil '$numero' introuvable."
@@ -204,7 +243,8 @@ function Add-Résultat {
     }
 
     $score = [int](Read-Host "Score obtenu")
-    $recompenses = Import-Csv $recompensesFile | Where-Object { $_.NomConcours -eq $nom }
+    
+    $recompenses = Import-Csv $recompensesFile | Where-Object { $_.NomConcours -eq $nom } # $_ représente l'objet courant dans la boucle. Ce qui veut dire que $_.NomConcours accède à la propriété NomConcours de l'objet courant
     $gagnees = $recompenses | Where-Object { $score -ge [int]$_.Seuil } | Select-Object -Expand TitreRecompense
     $recompense = ($gagnees | Sort-Object) -join " + "
 
@@ -371,6 +411,7 @@ function Menu {
             "8" {
                 Write-Host "Fermeture du programme." -ForegroundColor Green
                 Start-Sleep -Seconds 1
+                Clear-Host
                 exit 
             }
 
