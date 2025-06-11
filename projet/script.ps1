@@ -1,13 +1,26 @@
 ﻿# =================================================================================
 # Auteur      : Corpataux César
 # Date        : 2025-06-05
-# Version     : 5.8
+# Version     : 5.9
 # Description : Gestion des tireurs, concours, résultats, logs, accès 100% FTP, interface console complète
-# Paramètres  : UTF-8, fichiers CSV distants, logs info/erreur, FTP
-# =================================================================================
+# Paramètres  : -UserName
+# ==========================================================================
+
+# Paramètres d'entrée
+param(
+    [string]$UserName = $env:USERNAME # Utilise le nom d'utilisateur du système par défaut
+)
+
+Write-Output "Nom de l'utilisateur : $UserName"
+Write-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+Read-Host
+
 
 chcp 65001 > $null
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+
+
 
 # récupération des paramètres FTP depuis un fichier texte pour éviter de les stocker en clair dans le script
 $ftpParams = Get-Content "UserPassword_FTP.txt"
@@ -54,7 +67,8 @@ function Send-File {
     $client.Credentials = $ftpCredential
     try {
         $client.UploadFile($url, "STOR", $localPath)
-    } catch {
+    }
+    catch {
         Write-Log ERROR "Échec de l'envoi FTP de $remoteName : $($_.Exception.Message)"
     }
 }
@@ -103,10 +117,10 @@ function Get-All {
     Confirm-CsvFile "concours.csv"    "NomConcours,DateCreation"
     Confirm-CsvFile "recompenses.csv" "NomConcours,TitreRecompense,Seuil"
     Confirm-CsvFile "resultats.csv"   "NumeroFusil,NomConcours,Score,Recompense,Date"
-    if (-not (Test-Path $logInfoFile))  { New-Item $logInfoFile -ItemType File | Out-Null }
+    if (-not (Test-Path $logInfoFile)) { New-Item $logInfoFile -ItemType File | Out-Null }
     if (-not (Test-Path $logErrorFile)) { New-Item $logErrorFile -ItemType File | Out-Null }
     Write-Host "Fichiers Actualisé " -ForegroundColor Green
-    Start-Sleep -Seconds 1.5
+    Start-Sleep -Seconds 1
 }
 
 
@@ -170,7 +184,8 @@ function Add-Concours {
     if ($csv.NomConcours -contains $nom) {
         Write-Host "Concours existant." -ForegroundColor Yellow
         Write-Log ERROR "Concours '$nom' existe déjà."
-        Read-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+        Write-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+        Read-Host
         return
     }
     $concours = [PSCustomObject]@{
@@ -205,7 +220,8 @@ function Add-Résultat {
     if ($concours.Count -eq 0) {
         Write-Host "Aucun concours." -ForegroundColor Red
         Write-Log ERROR "Ajout résultat impossible : aucun concours."
-        Read-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+        Write-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+        Read-Host
         return
     }
     Write-Host "`n--- Concours disponibles ---" -ForegroundColor Cyan
@@ -216,11 +232,14 @@ function Add-Résultat {
     if ($tireurs.Count -eq 0) {
         Write-Host "Aucun tireur disponible." -ForegroundColor Red
         Write-Log ERROR "Ajout résultat impossible : aucun tireur."
-        Read-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+        Write-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+        Read-Host
         return
     }
     Write-Host "`n--- Tireurs disponibles ---" -ForegroundColor Cyan
     $tireurs | ForEach-Object { Write-Host "- $($_.NumeroFusil) : $($_.Prenom) $($_.Nom)" }
+    write-Host ""
+    
 
     $nom = Read-Host "Nom du concours"
     # vérifie si le concours existe en comparant le nom avec les noms existants dans le CSV
@@ -228,7 +247,8 @@ function Add-Résultat {
     if (-not ($concours.NomConcours -contains $nom)) {
         Write-Host "Introuvable." -ForegroundColor Red
         Write-Log ERROR "Concours '$nom' introuvable."
-        Read-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+        Write-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+        Read-Host
         return
     }
 
@@ -238,7 +258,8 @@ function Add-Résultat {
     if (-not ($tireurs.NumeroFusil -contains $numero)) {
         Write-Host "Tireur introuvable." -ForegroundColor Red
         Write-Log ERROR "Numéro fusil '$numero' introuvable."
-        Read-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+        Write-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+        Read-Host
         return
     }
 
@@ -267,7 +288,8 @@ function Show-Logs {
     Get-Content "$localTempPath\log_info.txt" | ForEach-Object { Write-Host $_ }
     Write-Host "\n--- Logs ERREUR ---" -ForegroundColor Red
     Get-Content "$localTempPath\log_error.txt" | ForEach-Object { Write-Host $_ }
-    Read-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+    Write-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+    Read-Host
 
 
 }
@@ -284,7 +306,8 @@ function Show-AllTireurs {
         Write-Host "Email     : $($t.Email)"
         Write-Host "Adresse   : $($t.Adresse) $($t.NPA) $($t.Ville)"
         Write-Host "Inscrit le: $($t.DateInscription)"
-        Read-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+        Write-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+        Read-Host
 
     }
 }
@@ -294,7 +317,8 @@ function Show-Tireur {
 
     if ($csv.Count -eq 0) {
         Write-Host "Aucun tireur disponible." -ForegroundColor Red
-        Read-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+        Write-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+        Read-Host
 
         return
     }
@@ -306,7 +330,8 @@ function Show-Tireur {
 
     if (-not $tireur) {
         Write-Host "Tireur introuvable." -ForegroundColor Red
-        Read-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+        Write-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+        Read-Host
 
         return
     }
@@ -321,8 +346,9 @@ function Show-Tireur {
     Write-Host "Adresse   : $($tireur.Adresse), $($tireur.NPA) $($tireur.Ville)"
     Write-Host "Inscrit le: $($tireur.DateInscription)"
     write-Host "--------------------------"
-    Write-Host "La fiche du tireur est aussi disponible $ l'adresse suivante : $ftpBaseUrl/tireur_$($tireur.NumeroFusil).html"
-    Read-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+    Write-Host ("La fiche du tireur est aussi disponible à l'adresse suivante : https://cesarcorpataux.emf-informatique.ch/script-122/tireur_" + $tireur.NumeroFusil + ".html")
+    Write-Host "Appuyez sur ENTREE pour continuer..." -ForegroundColor Red
+    Read-Host
 
     $htmlContent = @"
 <!DOCTYPE html>
@@ -410,7 +436,8 @@ function Menu {
             "7" { Get-All }
             "8" {
                 Write-Host "Fermeture du programme." -ForegroundColor Green
-                Start-Sleep -Seconds 1
+                Write-Host "Merci d'avoir utilisé le programme $UserName." -ForegroundColor Cyan
+                Start-Sleep -Seconds 2
                 Clear-Host
                 exit 
             }
