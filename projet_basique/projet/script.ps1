@@ -11,7 +11,7 @@ chcp 65001 > $null #on change la page de code pour UTF-8. chcp veut dire "change
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 #on configure l'encodage de la console pour qu'il utilise UTF-8
 
 # === Dossier de stockage ===
-$basePath = "scriptFiles"  # Emplacement des fichiers de données
+$basePath = $PSScriptRoot  # Emplacement des fichiers de données
 if (-not (Test-Path $basePath)) {   # Si le dossier scriptFiles n'existe pas
     New-Item -Path $basePath -ItemType Directory | Out-Null  # On le crée
 }
@@ -22,7 +22,7 @@ $concoursFile    = Join-Path $basePath "concours.csv"
 $recompensesFile = Join-Path $basePath "recompenses.csv"
 $resultatsFile   = Join-Path $basePath "resultats.csv"
 $logFile         = Join-Path $basePath "logs.log"
-$pageWebFile     = Join-Path $PSScriptRoot "tireur.html"   # ⬅ HTML généré dans le dossier du script
+$pageWebFile     = Join-Path $basePath "tireur.html"   # ⬅ HTML généré dans le dossier du script
 #Join-Path colle $basePath/PSScriptRoot et le nom du fichier pour créer un chemin complet
 
 # === Fonction pour initialiser un fichier avec une ligne d'en-tête si nécessaire ===
