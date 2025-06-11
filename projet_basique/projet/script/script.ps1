@@ -23,6 +23,7 @@ $recompensesFile = Join-Path $basePath "recompenses.csv"
 $resultatsFile   = Join-Path $basePath "resultats.csv"
 $logFile         = Join-Path $basePath "logs.log"
 $pageWebFile     = Join-Path $PSScriptRoot "tireur.html"   # ⬅ HTML généré dans le dossier du script
+#Join-Path colle $basePath/PSScriptRoot et le nom du fichier pour créer un chemin complet
 
 # === Fonction pour initialiser un fichier avec une ligne d'en-tête si nécessaire ===
 function Initialize-CsvFile {
@@ -99,9 +100,10 @@ function Add-Concours {
 
 # === Fonction pour enregistrer un résultat de concours pour un tireur ===
 # === Fonction pour enregistrer un résultat de concours pour un tireur ===
+function# === Fonction corrigée pour enregistrer un résultat de concours pour un tireur ===
 function Add-Résultat {
     # Récupération des concours existants
-    $listeConcours = Get-Content $concoursFile | Select-Object -Skip 1
+    $listeConcours = Import-Csv $concoursFile
     if ($listeConcours.Count -eq 0) {
         Write-Host "Aucun concours existant !" -ForegroundColor Red
         return
@@ -109,16 +111,16 @@ function Add-Résultat {
 
     # Affiche les concours disponibles
     Write-Host "`nConcours disponibles :"
-    $listeConcours | ForEach-Object { ($_ -split ",")[0] }
+    $listeConcours | ForEach-Object { Write-Host "- $($_.NomConcours)" }
 
     # Sélection du concours
     $nomConcours = Read-Host "Nom du concours"
-    if (-not ($listeConcours -match "^$nomConcours,")) {
+    if (-not ($listeConcours | Where-Object { $_.NomConcours -eq $nomConcours })) {
         Write-Host "Concours invalide !" -ForegroundColor Red
         return
     }
 
-    # ✅ Affiche la liste des tireurs avant de saisir un résultat
+    # Affiche la liste des tireurs avant de saisir un résultat
     Write-Host "`n--- Liste des tireurs ---"
     $tireurs = Import-Csv $tireursFile
     foreach ($t in $tireurs) {
@@ -152,7 +154,9 @@ function Add-Résultat {
 
     # Ajout au fichier log
     Add-Content $logFile "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') - INFO - Résultat ajouté : $numeroFusil, $nomConcours, $score, $recompense"
+    Write-Host "Résultat enregistré avec succès." -ForegroundColor Green
 }
+
 
 
 # === Fonction pour afficher un tireur précis ===
@@ -260,6 +264,7 @@ do {
     Write-Host "5. Afficher tous les tireurs"
     Write-Host "6. Quitter"
     $choix = (Read-Host "Veuillez choisir une option (1-6)").Trim()
+    #.Trim() permet de supprimer les espaces avant et après la saisie
 
     switch ($choix) {
         "1" { Add-Tireur }
